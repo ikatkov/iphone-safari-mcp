@@ -553,7 +553,7 @@ def _list_devices() -> int:
     rejected. That report is the device list.
     """
     global _driver
-    _DEVICE["safari:deviceUDID"] = "00000000-000000000000002E"
+    _DEVICE["safari:deviceUDID"] = "00000000-0000000000000000"
     _DEVICE["safari:deviceName"] = None
     try:
         _get_driver()
