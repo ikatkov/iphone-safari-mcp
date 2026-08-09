@@ -23,26 +23,31 @@ automation session first.
 
 ## Install
 
-A venv keeps the server starting without network access:
+Needs [uv](https://docs.astral.sh/uv/). Nothing else — uv fetches Python and the
+dependencies itself.
+
+Run it straight from the repo, no clone and no venv:
+
+```bash
+uvx --from git+https://github.com/ikatkov/iphone-safari-mcp \
+  iphone-safari-mcp --selftest https://example.com
+```
+
+Or work on it locally:
 
 ```bash
 git clone https://github.com/ikatkov/iphone-safari-mcp
 cd iphone-safari-mcp
-python3 -m venv .venv          # Python 3.10+
-./.venv/bin/pip install -r requirements.txt
+uv sync                       # resolves dependencies into .venv
+uv run iphone-safari-mcp --selftest https://example.com
 ```
 
-`server.py` also carries PEP 723 inline metadata, so `uv run server.py --selftest` works
-without a venv if you prefer.
+The selftest prints the user agent (should say iPhone), writes
+`/tmp/iphone-safari-selftest.png`, and reports how many interactive elements it found.
+`--help` lists everything.
 
-Then check it against the phone:
-
-```bash
-./.venv/bin/python server.py --selftest https://example.com
-```
-
-It prints the user agent (should say iPhone), writes `/tmp/iphone-safari-selftest.png`,
-and reports how many interactive elements it found. `--help` lists everything.
+The examples below use `uv run iphone-safari-mcp` (from a clone); every one of them
+works with the `uvx --from git+…` form too.
 
 ## How it talks to safaridriver
 
@@ -63,7 +68,7 @@ To debug discovery, run your own driver and attach to it:
 
 ```bash
 safaridriver --diagnose -p 4444          # logs to ~/Library/Logs/com.apple.WebDriver/
-IPHONE_SAFARI_DRIVER_URL=http://localhost:4444 ./.venv/bin/python server.py --verify
+IPHONE_SAFARI_DRIVER_URL=http://localhost:4444 uv run iphone-safari-mcp --verify
 ```
 
 ## Pick the right phone
@@ -72,8 +77,8 @@ IPHONE_SAFARI_DRIVER_URL=http://localhost:4444 ./.venv/bin/python server.py --ve
 the network that you never plugged in. Always pin the device:
 
 ```bash
-./.venv/bin/python server.py --list-devices     # what safaridriver can see, and why each was rejected
-./.venv/bin/python server.py --device "My iPhone" --selftest https://example.com
+uv run iphone-safari-mcp --list-devices     # what safaridriver can see, and why each was rejected
+uv run iphone-safari-mcp --device "My iPhone" --selftest https://example.com
 ```
 
 For the MCP server, pin it with an env var — `IPHONE_SAFARI_DEVICE_NAME`,
@@ -91,7 +96,7 @@ silently — it just drives someone else's phone. `--verify` paints a large rand
 whatever screen it actually controls:
 
 ```bash
-./.venv/bin/python server.py --verify --device "My iPhone"
+uv run iphone-safari-mcp --verify --device "My iPhone"
 ```
 
 Only register once the code appears on the phone you intend to drive:
@@ -99,11 +104,20 @@ Only register once the code appears on the phone you intend to drive:
 ```bash
 claude mcp add iphone-safari --scope user \
   -e IPHONE_SAFARI_DEVICE_UDID=<udid confirmed by --verify> \
-  -- /abs/path/to/iphone-safari-mcp/.venv/bin/python \
-     /abs/path/to/iphone-safari-mcp/server.py
+  -- uvx --from git+https://github.com/ikatkov/iphone-safari-mcp iphone-safari-mcp
 ```
 
-Use absolute paths — the agent won't launch it from this directory.
+That pins nothing to this directory — the agent can launch it from anywhere. uv caches
+the environment, so only the first start needs the network.
+
+To run your own checkout instead, point uv at it by absolute path, since the agent
+won't launch from this directory:
+
+```bash
+claude mcp add iphone-safari --scope user \
+  -e IPHONE_SAFARI_DEVICE_UDID=<udid confirmed by --verify> \
+  -- uv run --directory /abs/path/to/iphone-safari-mcp iphone-safari-mcp
+```
 
 Prefer the UDID over the name: `--verify` prints the UDID that safaridriver actually
 bound to, and unlike names it can't drift or collide.

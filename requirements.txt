@@ -1,3 +1,0 @@
-mcp>=1.2.0
-selenium>=4.27
-pillow>=10.0

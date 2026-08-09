@@ -1,12 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "mcp>=1.2.0",
-#   "selenium>=4.27",
-#   "pillow>=10.0",
-# ]
-# ///
 """MCP server that drives Safari on a physically attached iPhone via safaridriver.
 
 Requirements on the phone: Settings -> Apps -> Safari -> Advanced ->
@@ -14,7 +5,7 @@ Web Inspector: ON, Remote Automation: ON. Phone plugged in, trusted, unlocked.
 On the Mac, once: `safaridriver --enable`.
 
 Run standalone to sanity-check the connection:
-    ./server.py --selftest https://example.com
+    uv run iphone-safari-mcp --selftest https://example.com
 """
 
 from __future__ import annotations
@@ -662,29 +653,37 @@ Remote Automation both ON, plugged in, unlocked, trusted. On the Mac, once:
 """
 
 
-if __name__ == "__main__":
-    if "-h" in sys.argv or "--help" in sys.argv:
+def main(argv: list[str] | None = None) -> int:
+    """Console-script entry point. With no arguments, serve MCP over stdio."""
+    global _DRIVER_URL
+    argv = sys.argv[1:] if argv is None else argv
+    if "-h" in argv or "--help" in argv:
         print(_USAGE)
-        raise SystemExit(0)
-    for _sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        return 0
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         try:
-            signal.signal(_sig, _on_signal)
+            signal.signal(sig, _on_signal)
         except (ValueError, OSError):
             pass
-    if "--device" in sys.argv:
-        _DEVICE["safari:deviceName"] = sys.argv[sys.argv.index("--device") + 1]
-    if "--udid" in sys.argv:
-        _DEVICE["safari:deviceUDID"] = sys.argv[sys.argv.index("--udid") + 1]
-    if "--driver-url" in sys.argv:
-        _DRIVER_URL = sys.argv[sys.argv.index("--driver-url") + 1]
-    if "--list-devices" in sys.argv:
-        raise SystemExit(_list_devices())
-    if "--verify" in sys.argv:
-        raise SystemExit(_verify())
-    if "--selftest" in sys.argv:
-        idx = sys.argv.index("--selftest")
-        target = sys.argv[idx + 1] if len(sys.argv) > idx + 1 else "https://example.com"
+    if "--device" in argv:
+        _DEVICE["safari:deviceName"] = argv[argv.index("--device") + 1]
+    if "--udid" in argv:
+        _DEVICE["safari:deviceUDID"] = argv[argv.index("--udid") + 1]
+    if "--driver-url" in argv:
+        _DRIVER_URL = argv[argv.index("--driver-url") + 1]
+    if "--list-devices" in argv:
+        return _list_devices()
+    if "--verify" in argv:
+        return _verify()
+    if "--selftest" in argv:
+        idx = argv.index("--selftest")
+        target = argv[idx + 1] if len(argv) > idx + 1 else "https://example.com"
         if target.startswith("-"):
             target = "https://example.com"
-        raise SystemExit(_selftest(target))
+        return _selftest(target)
     mcp.run()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
